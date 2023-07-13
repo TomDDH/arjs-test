@@ -1,0 +1,42 @@
+name: Deploy to Google App Engine
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - name: Install dependencies
+        run: npm install
+      - name: Building the project
+        run: CI=false npm run build
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}'
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: webxr-383723
+          service_account_key: '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}'
+      - name: Authenticate with Google Cloud 
+        run: gcloud auth activate-service-account --key-file=<(echo "$GOOGLE_APPLICATION_CREDENTIALS")
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: '${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}'
+      - name: Deploy to Google App Engine
+        run: gcloud app deploy --quiet
+      - name: Test deployed app
+        run: curl "$(gcloud app browse --no-launch-browser)"
